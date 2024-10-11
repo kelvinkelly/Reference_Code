@@ -1,0 +1,94 @@
+Hello, World:
+
+Rust
+fn main() {
+    println!("Hello, world!");
+}
+Use code with caution.
+
+Basic arithmetic:
+
+Rust
+fn main() {
+    let x = 5;
+    let y = 10;
+
+    let sum = x + y;
+    let difference = x - y;
+    let product = x * y;
+    let quotient = x / y;
+    let remainder = x % y;
+
+    println!("Sum: {}", sum);
+    println!("Difference: {}", difference);
+    println!("Product: {}", product);
+    println!("Quotient: {}", quotient);
+    println!("Remainder: {}", remainder);   
+
+}
+Use code with caution.
+
+Conditional statements:
+
+Rust
+fn main() {
+    let x = 10;
+
+    if x > 0 {
+        println!("x is positive");
+    } else if x < 0 {
+        println!("x is negative");
+    } else {
+        println!("x is zero");
+    }
+}
+Use code with caution.
+
+Loops:
+
+Rust
+fn main() {
+    let mut count = 0;
+
+    while count < 5 {
+        println!("Count: {}", count);
+        count += 1;
+    }
+
+    for i in 0..5 {
+        println!("i: {}", i);
+    }
+}
+Use code with caution.
+
+Functions:
+
+Rust
+fn greet(name: &str) {
+    println!("Hello, {}!", name);
+}
+
+fn main() {
+    greet("Alice");
+    greet("Bob");
+}
+Use code with caution.
+
+Structs:
+
+Rust
+struct Person {
+    name: String,
+    age: u32,
+}
+
+fn main() {
+    let person1 = Person {
+        name: String::from("Alice"),
+        age: 30,
+    };
+
+    println!("Name: {}", person1.name);
+    println!("Age: {}", person1.age);   
+
+}
