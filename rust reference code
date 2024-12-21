@@ -1,0 +1,21 @@
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
+
+fn main() -> io::Result<()> {
+    // Specify the path to the file
+    let path = Path::new("example.txt");
+
+    // Open the file in read-only mode
+    let file = File::open(&path)?;
+
+    // Create a buffered reader for the file
+    let reader = io::BufReader::new(file);
+
+    // Iterate over each line in the file and print it
+    for line in reader.lines() {
+        println!("{}", line?);
+    }
+
+    Ok(())
+}
