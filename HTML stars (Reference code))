@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Positions Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+            color: #fff;
+        }
+        #chart-container {
+            width: 80%;
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div id="chart-container">
+        <canvas id="starChart"></canvas>
+    </div>
+    <script>
+        const ctx = document.getElementById('starChart').getContext('2d');
+        const starChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Star Positions',
+                    data: [
+                        { x: 1, y: 2 },
+                        { x: 3, y: 4 },
+                        { x: 5, y: 1 },
+                        { x: 7, y: 3 },
+                        { x: 9, y: 6 }
+                    ],
+                    backgroundColor: 'rgba(255, 255, 255, 0.8)'
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'X Position'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Y Position'
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
