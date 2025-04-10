@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        /* Basic styling for the page */
+        body {
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full viewport height */
+            margin: 0;
+            background-color: #222; /* Dark background */
+            font-family: 'Press Start 2P', cursive; /* Retro font */
+            color: #fff; /* White text */
+            overflow: hidden; /* Hide scrollbars */
+        }
+
+        /* Canvas styling */
+        #gameCanvas {
+            border: 5px solid #555; /* Dark gray border */
+            background-color: #000; /* Black game area */
+            display: block; /* Prevent extra space below canvas */
+            margin: 20px auto; /* Center canvas with margin */
+            max-width: 90vw; /* Max width relative to viewport */
+            max-height: 70vh; /* Max height relative to viewport */
+            aspect-ratio: 1 / 1; /* Keep it square */
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5); /* Greenish glow */
+        }
+
+        /* Score display styling */
+        #scoreBoard {
+            font-size: 1.5rem; /* Larger font size */
+            margin-bottom: 15px; /* Space below score */
+            color: #0f0; /* Green score text */
+            text-shadow: 0 0 5px #0f0; /* Green text glow */
+        }
+
+        /* Message box styling (for game over/start messages) */
+        #messageBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.2rem;
+            display: none; /* Hidden by default */
+            border: 2px solid #0f0;
+            box-shadow: 0 0 15px #0f0;
+        }
+
+        #messageBox button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1rem;
+            padding: 10px 20px;
+            margin-top: 20px;
+            cursor: pointer;
+            background-color: #0f0;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+
+         #messageBox button:hover {
+             background-color: #0a0;
+             box-shadow: 0 0 10px #0f0;
+         }
+
+        /* Instructions styling */
+        #instructions {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="scoreBoard">Score: 0</div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="instructions">Use Arrow Keys to Move</div>
+
+    <div id="messageBox">
+        <p id="messageText"></p>
+        <button id="restartButton">Restart</button>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const restartButton = document.getElementById('restartButton');
+        const instructions = document.getElementById('instructions');
+
+        // --- Game Constants ---
+        const gridSize = 20; // Size of each grid square in pixels
+        let tileCountX; // Number of tiles horizontally (calculated based on canvas size)
+        let tileCountY; // Number of tiles vertically (calculated based on canvas size)
+        const snakeColor = '#0f0'; // Green snake
+        const foodColor = '#f00'; // Red food
+        const initialTailLength = 3; // Starting length of the snake
+        const gameSpeed = 100; // Game loop interval in ms (lower is faster)
+
+        // --- Game State Variables ---
+        let snakeX, snakeY; // Snake head position (grid coordinates)
+        let velocityX = 0, velocityY = 0; // Snake movement direction
+        let foodX, foodY; // Food position (grid coordinates)
+        let trail = []; // Array to store snake body segments
+        let tailLength = initialTailLength; // Current length of the snake
+        let score = 0;
+        let gameRunning = false;
+        let gameLoopInterval;
+        let inputBuffer = []; // Buffer to store key presses
+
+
+        // --- Functions ---
+
+        /**
+         * Resizes the canvas and recalculates grid dimensions.
+         */
+        function resizeCanvas() {
+            // Make canvas dimensions multiples of gridSize for a clean grid
+            const parentWidth = canvas.parentElement.clientWidth * 0.9; // Use 90% of parent width
+            const parentHeight = canvas.parentElement.clientHeight * 0.7; // Use 70% of parent height
+
+            // Calculate the largest square dimension that fits and is a multiple of gridSize
+            const maxDim = Math.min(parentWidth, parentHeight);
+            const newSize = Math.floor(maxDim / gridSize) * gridSize;
+
+            canvas.width = newSize;
+            canvas.height = newSize;
+
+            // Recalculate tile counts based on new canvas size
+            tileCountX = canvas.width / gridSize;
+            tileCountY = canvas.height / gridSize;
+
+            // If game is running, redraw immediately after resize
+            if (gameRunning) {
+                drawGame();
+            } else {
+                 // Show start message if not running
+                 showStartMessage();
+            }
+        }
+
+        /**
+         * Initializes or resets the game state.
+         */
+        function resetGame() {
+            // Stop existing game loop if any
+            if (gameLoopInterval) {
+                clearInterval(gameLoopInterval);
+            }
+
+            // Reset snake position to center
+            snakeX = Math.floor(tileCountX / 2);
+            snakeY = Math.floor(tileCountY / 2);
+
+            // Reset velocity (initially stopped)
+            velocityX = 0;
+            velocityY = 0;
+
+            // Reset snake trail and length
+            trail = [];
+            tailLength = initialTailLength;
+
+            // Reset score
+            score = 0;
+            updateScoreDisplay();
+
+            // Place initial food
+            placeFood();
+
+            // Clear input buffer
+            inputBuffer = [];
+
+            // Hide message box and show instructions
+            messageBox.style.display = 'none';
+            instructions.style.display = 'block';
+
+            // Mark game as not running until first key press
+            gameRunning = false;
+
+             // Initial draw without starting the loop
+            drawGame();
+        }
+
+        /**
+         * Shows the initial start message.
+         */
+        function showStartMessage() {
+            messageText.textContent = 'Press Arrow Key to Start!';
+            restartButton.style.display = 'none'; // Hide restart button initially
+            messageBox.style.display = 'block';
+            instructions.style.display = 'none'; // Hide instructions when message box is shown
+            gameRunning = false; // Ensure game isn't marked as running
+        }
+
+
+        /**
+         * Starts the main game loop.
+         */
+        function startGameLoop() {
+            if (!gameRunning) {
+                gameRunning = true;
+                messageBox.style.display = 'none'; // Hide message box
+                instructions.style.display = 'block'; // Show instructions
+                gameLoopInterval = setInterval(gameLoop, gameSpeed);
+            }
+        }
+
+        /**
+         * The main game loop function, called repeatedly.
+         */
+        function gameLoop() {
+            if (!gameRunning) return; // Exit if game is paused or over
+
+            // Process buffered input
+            processInput();
+
+            // Update snake position based on velocity
+            snakeX += velocityX;
+            snakeY += velocityY;
+
+            // --- Collision Detection ---
+
+            // Wall Collision
+            if (snakeX < 0 || snakeX >= tileCountX || snakeY < 0 || snakeY >= tileCountY) {
+                gameOver();
+                return; // Stop loop execution for this frame
+            }
+
+            // Self Collision
+            for (let i = 0; i < trail.length; i++) {
+                if (trail[i].x === snakeX && trail[i].y === snakeY) {
+                    // Allow collision only if tail is long enough (prevents instant death on start)
+                    if (tailLength > initialTailLength) {
+                         gameOver();
+                         return; // Stop loop execution
+                    }
+                }
+            }
+
+            // --- Update Snake Trail ---
+            trail.push({ x: snakeX, y: snakeY }); // Add new head position
+            // Remove oldest segment if trail exceeds tail length
+            while (trail.length > tailLength) {
+                trail.shift();
+            }
+
+            // --- Food Collision ---
+            if (snakeX === foodX && snakeY === foodY) {
+                tailLength++; // Increase snake length
+                score++; // Increase score
+                updateScoreDisplay();
+                placeFood(); // Place new food
+            }
+
+            // --- Draw Everything ---
+            drawGame();
+        }
+
+        /**
+         * Draws all game elements onto the canvas.
+         */
+        function drawGame() {
+            // Clear canvas (draw background)
+            ctx.fillStyle = '#000'; // Black background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw snake
+            ctx.fillStyle = snakeColor;
+            for (let i = 0; i < trail.length; i++) {
+                ctx.fillRect(
+                    trail[i].x * gridSize, // x position
+                    trail[i].y * gridSize, // y position
+                    gridSize - 2, // width (slightly smaller for grid effect)
+                    gridSize - 2  // height (slightly smaller for grid effect)
+                );
+                 // Add a slightly darker center for visual effect (optional)
+                 ctx.fillStyle = '#0a0'; // Darker green
+                 ctx.fillRect(
+                     trail[i].x * gridSize + 4,
+                     trail[i].y * gridSize + 4,
+                     gridSize - 10,
+                     gridSize - 10
+                 );
+                 ctx.fillStyle = snakeColor; // Reset to main snake color
+            }
+
+             // Draw snake head slightly different (optional)
+             if (trail.length > 0) {
+                 const head = trail[trail.length - 1];
+                 ctx.fillStyle = '#0f0'; // Brighter green for head
+                 ctx.fillRect(
+                     head.x * gridSize,
+                     head.y * gridSize,
+                     gridSize - 2,
+                     gridSize - 2
+                 );
+             }
+
+
+            // Draw food
+            ctx.fillStyle = foodColor;
+             ctx.shadowColor = 'rgba(255, 0, 0, 0.7)'; // Red shadow for food
+             ctx.shadowBlur = 8;
+            ctx.fillRect(
+                foodX * gridSize,
+                foodY * gridSize,
+                gridSize - 2,
+                gridSize - 2
+            );
+            ctx.shadowBlur = 0; // Reset shadow blur
+
+        }
+
+        /**
+         * Places food randomly on an empty tile.
+         */
+        function placeFood() {
+            let validPosition = false;
+            while (!validPosition) {
+                foodX = Math.floor(Math.random() * tileCountX);
+                foodY = Math.floor(Math.random() * tileCountY);
+
+                // Check if the food position overlaps with the snake's body
+                validPosition = true; // Assume valid initially
+                for (let i = 0; i < trail.length; i++) {
+                    if (trail[i].x === foodX && trail[i].y === foodY) {
+                        validPosition = false; // Invalid position, try again
+                        break;
+                    }
+                }
+                // Also check head position (important at the start)
+                 if (snakeX === foodX && snakeY === foodY) {
+                    validPosition = false;
+                 }
+            }
+        }
+
+        /**
+         * Updates the score display on the page.
+         */
+        function updateScoreDisplay() {
+            scoreBoard.textContent = `Score: ${score}`;
+        }
+
+        /**
+         * Handles the game over state.
+         */
+        function gameOver() {
+            gameRunning = false; // Stop the game logic
+            clearInterval(gameLoopInterval); // Stop the game loop
+            messageText.textContent = `Game Over! Score: ${score}`;
+            restartButton.style.display = 'block'; // Show restart button
+            messageBox.style.display = 'block'; // Show the message box
+            instructions.style.display = 'none'; // Hide instructions
+        }
+
+        /**
+         * Handles keydown events for controlling the snake.
+         * @param {KeyboardEvent} event - The keydown event object.
+         */
+        function handleKeyDown(event) {
+             // If game hasn't started, start it on first arrow key press
+             if (!gameRunning && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+                 // Only start if velocity is currently 0 (prevents starting if already moving somehow)
+                 if (velocityX === 0 && velocityY === 0) {
+                      // Set initial direction based on first key press
+                     switch (event.key) {
+                         case 'ArrowUp':    if (velocityY === 0) inputBuffer.push({ x: 0, y: -1 }); break;
+                         case 'ArrowDown':  if (velocityY === 0) inputBuffer.push({ x: 0, y: 1 }); break;
+                         case 'ArrowLeft':  if (velocityX === 0) inputBuffer.push({ x: -1, y: 0 }); break;
+                         case 'ArrowRight': if (velocityX === 0) inputBuffer.push({ x: 1, y: 0 }); break;
+                     }
+                     startGameLoop(); // Start the main game loop
+                     return; // Don't process further in this handler if just starting
+                 }
+             }
+
+            // Buffer valid inputs during the game
+            if (gameRunning) {
+                let newVel = null;
+                switch (event.key) {
+                    // Add requested velocity change to buffer if it's not reversing the current direction
+                    case 'ArrowUp':    if (velocityY === 0) newVel = { x: 0, y: -1 }; break;
+                    case 'ArrowDown':  if (velocityY === 0) newVel = { x: 0, y: 1 }; break;
+                    case 'ArrowLeft':  if (velocityX === 0) newVel = { x: -1, y: 0 }; break;
+                    case 'ArrowRight': if (velocityX === 0) newVel = { x: 1, y: 0 }; break;
+                }
+                 // Add to buffer only if a valid move was detected and buffer isn't too full
+                 if (newVel && inputBuffer.length < 2) {
+                     inputBuffer.push(newVel);
+                 }
+            }
+        }
+
+        /**
+         * Processes the next input from the buffer.
+         */
+        function processInput() {
+            if (inputBuffer.length > 0) {
+                const nextVel = inputBuffer.shift(); // Get the oldest input
+                // Check again to prevent reversing direction based on current velocity
+                if ((nextVel.x !== 0 && velocityX === 0) || (nextVel.y !== 0 && velocityY === 0)) {
+                    velocityX = nextVel.x;
+                    velocityY = nextVel.y;
+                }
+            }
+        }
+
+
+        // --- Event Listeners ---
+        window.addEventListener('keydown', handleKeyDown);
+        restartButton.addEventListener('click', () => {
+             resetGame();
+             // Optional: Show start message again or immediately allow key press to start
+             showStartMessage();
+        });
+        window.addEventListener('resize', resizeCanvas); // Adjust canvas on window resize
+
+        // --- Initial Setup ---
+        resizeCanvas(); // Initial canvas sizing
+        resetGame(); // Set up initial game state
+        showStartMessage(); // Show the initial message
+
+    </script>
+
+</body>
+</html>
